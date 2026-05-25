@@ -45,9 +45,34 @@ User Monitoring, crash reporting, and performance tracking.
 ```sh
 pnpm add @rumtrace/rumtrace-rn-ios
 # or: npm i @rumtrace/rumtrace-rn-ios / yarn add @rumtrace/rumtrace-rn-ios
+```
 
+### Configure CocoaPods sources
+
+The native `RumtraceIosSdk` lives in a private GitHub repo, so its podspec
+is published to a dedicated **public spec repo** rather than CocoaPods Trunk.
+Add the source to the **top of your app's `ios/Podfile`** (above any
+`target` block):
+
+```ruby
+source 'https://github.com/rumtracehq/Specs.git'
+source 'https://cdn.cocoapods.org/'
+```
+
+> Both lines are required. Once you declare any custom `source`, CocoaPods
+> stops implicitly using Trunk, so you have to list it explicitly.
+
+Then install pods:
+
+```sh
 cd ios && pod install
 ```
+
+`pod install` will resolve `RumtraceIosSdk` from the spec repo and `git
+clone` the source from `github.com/rumtracehq/rumtrace-ios-sdk` using your
+git credentials (SSH key or HTTPS PAT). You need **read access to the
+private SDK repo**; ask your Rumtrace admin if `pod install` fails with a
+git auth error.
 
 The pod `RumtraceRnIos` depends transitively on `RumtraceIosSdk`. The native
 SDK version is pinned via `package.json` → `rumtrace.iosSdkVersion`, so a

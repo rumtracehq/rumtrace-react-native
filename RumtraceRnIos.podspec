@@ -42,6 +42,27 @@ Pod::Spec.new do |s|
     s.dependency "React-Core"
   end
 
-  # Native Rumtrace iOS SDK
+  # ---------------------------------------------------------------------------
+  # Native Rumtrace iOS SDK (https://github.com/rumtracehq/rumtrace-ios-sdk)
+  #
+  # The SDK source repo is PRIVATE, so CocoaPods cannot fetch it from
+  # cdn.cocoapods.org. The published podspec lives in a public spec repo
+  # whose URL must be added to the consumer's Podfile (one-time setup):
+  #
+  #   source 'https://github.com/rumtracehq/Specs.git'
+  #   source 'https://cdn.cocoapods.org/'
+  #
+  # `pod install` will then resolve this dependency from the spec repo and
+  # `git clone` the SDK source using the developer's git credentials (SSH key
+  # or HTTPS PAT with read access to rumtracehq/rumtrace-ios-sdk).
+  #
+  # Alternative (no spec repo) — pin the source directly in the Podfile:
+  #
+  #   pod 'RumtraceIosSdk',
+  #     :git => 'https://github.com/rumtracehq/rumtrace-ios-sdk.git',
+  #     :tag => '#{package["rumtrace"]["iosSdkVersion"]}'
+  #
+  # Either way the resolved version must equal `iosSdkVersion` in package.json.
+  # ---------------------------------------------------------------------------
   s.dependency 'RumtraceIosSdk', package["rumtrace"]["iosSdkVersion"]
 end
