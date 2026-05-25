@@ -1,25 +1,80 @@
 # @rumtrace/rumtrace-rn-ios
 
-React Native wrapper around the [Rumtrace iOS SDK](../rumtrace-ios-sdk).
+React Native wrapper around the [Rumtrace iOS SDK](../rumtrace-ios-sdk) for Real
+User Monitoring, crash reporting, and performance tracking.
 
-> ⚠️ iOS only. The package depends on the `RumtraceIosSdk` CocoaPod and ships
-> Swift / Obj-C++ bridge code; Android is not supported here.
+> ⚠️ **iOS only.** This package depends on the `RumtraceIosSdk` CocoaPod and
+> ships Swift / Obj-C++ bridge code. Android is not supported here — use the
+> dedicated Android wrapper for cross-platform setups.
+
+---
+
+## Features
+
+- **Native crash reporting** with symbolicated stack traces.
+- **Automatic view tracking** via React Navigation refs (or manual API).
+- **Network instrumentation** for `fetch` (and optionally `XMLHttpRequest`)
+  with W3C `traceparent` header injection for end-to-end correlation.
+- **JS error capture** — uncaught errors, unhandled promise rejections,
+  `console.error` / `console.warn`.
+- **Native iOS instrumentation packs** — URLSession, view controllers, taps,
+  hangs, app lifecycle, exits, app metrics, push notifications, web views,
+  low-power mode, session usage.
+- **Structured logging** with OTel-style severity levels.
+- **User, session, view, and global attributes** for slicing telemetry.
+- **Custom actions, errors, and timings** for app-specific metrics.
+- **TurboModule (New Architecture) ready**, with a Bridge fallback.
+
+---
+
+## Requirements
+
+| Requirement | Version |
+|-------------|---------|
+| iOS         | 16.0+   |
+| React       | 18+     |
+| React Native| 0.79+   |
+| Node        | 18+     |
+| Swift       | 5.10    |
+| Xcode       | 15+     |
+
+---
 
 ## Installation
 
 ```sh
 pnpm add @rumtrace/rumtrace-rn-ios
+# or: npm i @rumtrace/rumtrace-rn-ios / yarn add @rumtrace/rumtrace-rn-ios
+
 cd ios && pod install
 ```
 
-The pod `RumtraceRnIos` depends transitively on `RumtraceIosSdk`. The Rumtrace
-SDK version is pinned via `package.json` → `rumtrace.iosSdkVersion`.
+The pod `RumtraceRnIos` depends transitively on `RumtraceIosSdk`. The native
+SDK version is pinned via `package.json` → `rumtrace.iosSdkVersion`, so a
+`pod install` always resolves a matching pair.
+
+### New Architecture (TurboModules)
+
+Set `RCT_NEW_ARCH_ENABLED=1` when running `pod install` (or enable it in your
+`Podfile`) to opt into TurboModule codegen. The podspec auto-detects this flag.
+
+```sh
+RCT_NEW_ARCH_ENABLED=1 pod install
+```
+
+---
 
 ## Quick start
 
+Wrap your app in `RumtraceProvider` and pass your React Navigation ref so the
+SDK can automatically start/end view spans on route changes:
+
 ```tsx
 import { useRef } from 'react';
-import { NavigationContainer, type NavigationContainerRef } from '@react-navigation/native';
+import {
+  NavigationContainer,
+  type NavigationContainerRef,
+} from '@react-navigation/native';
 import { RumtraceProvider } from '@rumtrace/rumtrace-rn-ios';
 
 export default function App() {
@@ -43,50 +98,382 @@ export default function App() {
 }
 ```
 
+> **Tip:** memoize the `config` object (e.g. with `useMemo`) so the provider
+> doesn't re-initialize on every render.
+
+---
+
 ## API
-
-### `Rumtrace`
-
-Static facade over the native module. All methods return `Promise<void>` (or a
-typed result for network spans) and reject on native errors.
-
-```ts
-import { Rumtrace, logger } from '@rumtrace/rumtrace-rn-ios';
-
-await Rumtrace.startView('Home');
-Rumtrace.addAction('button_tap', { actionType: 'tap', attributes: { id: 'cta' } });
-Rumtrace.setUser({ id: '123', email: 'a@b.com' });
-logger.info('User logged in', { method: 'sso' });
-```
 
 ### `RumtraceProvider`
 
-Initializes the native SDK on mount, starts JS-side error / network /
-navigation instrumentation, and ends/flushes views on app background and
-unmount. Pass a React Navigation `ref` to get automatic view spans.
+Initializes the native SDK on mount, starts JS-side instrumentation
+(errors / network / navigation), and ends + flushes views when the app is
+backgrounded or unmounted.
+
+| Prop       | Type                       | Description                                                                                |
+|------------|----------------------------|--------------------------------------------------------------------------------------------|
+| `config`   | `RumtraceConfig`           | Required. Agent + native + JS configuration.                                              |
+| `ref`      | `Ref<NavigationRefLike>`   | Optional. React Navigation `NavigationContainerRef` for automatic view tracking.          |
+| `fallback` | `ReactNode`                | Optional. Element rendered while the SDK initializes. Defaults to `null`.                 |
+| `children` | `ReactNode`                | App content. Rendered after `Rumtrace.initialize` resolves.                               |
+
+### `Rumtrace`
+
+Static facade over the native TurboModule. All methods return a `Promise` that
+rejects on native errors (this layer never silently swallows failures).
+
+```ts
+import { Rumtrace, logger } from '@rumtrace/rumtrace-rn-ios';
+```
+
+#### Lifecycle
+
+```ts
+Rumtrace.initialize(config: RumtraceConfig): Promise<void>
+Rumtrace.forceFlush(): Promise<void>
+Rumtrace.endRootSessionNow(): Promise<void>
+```
+
+#### Views
+
+```ts
+Rumtrace.startView(name: string, url?: string): Promise<void>
+Rumtrace.endCurrentView(): Promise<void>
+
+// iOS UIViewController-tied views (rarely needed in pure RN apps)
+Rumtrace.startUIViewControllerView(name?: string, url?: string): Promise<void>
+Rumtrace.endUIViewControllerView(): Promise<void>
+```
+
+#### Users & global attributes
+
+```ts
+Rumtrace.setUser(user: Record<string, string>): Promise<void>
+Rumtrace.addGlobalAttribute(key: string, value: string): Promise<void>
+Rumtrace.addGlobalAttributes(attrs: Record<string, string>): Promise<void>
+Rumtrace.removeGlobalAttribute(key: string): Promise<void>
+```
+
+#### View-scoped attributes & events
+
+```ts
+Rumtrace.setViewAttribute(key: string, value: string): Promise<void>
+Rumtrace.setViewAttributes(attrs: Record<string, string>): Promise<void>
+Rumtrace.addViewEvent(name: string, attributes?: Attributes): Promise<void>
+```
+
+#### Custom actions, errors, timings, logs
+
+```ts
+Rumtrace.addAction(
+  actionName: string,
+  options?: { actionType?: string; attributes?: Attributes }
+): Promise<void>
+
+Rumtrace.addError(error: Error | string, source?: string): Promise<void>
+Rumtrace.addTiming(name: string, durationMs: number): Promise<void>
+Rumtrace.log(level: LogLevel, message: string, attributes?: Attributes): Promise<void>
+```
+
+#### Session attributes
+
+```ts
+Rumtrace.setSessionAttribute(key: string, valueMs: number): Promise<void>
+```
+
+#### Manual network spans
+
+Two-phase API for callers that need W3C trace context propagation
+(e.g. custom HTTP clients):
+
+```ts
+const handle = await Rumtrace.startNetworkSpan('GET', url);
+// inject handle.traceparent on the outgoing request, then:
+await Rumtrace.endNetworkSpan(handle.spanId, {
+  statusCode: 200,
+  error: '',
+  requestContentLength: -1,
+  responseContentLength: 1234,
+});
+```
+
+One-shot fallback when header injection isn't possible:
+
+```ts
+await Rumtrace.reportNetworkRequest({
+  method: 'GET',
+  url,
+  statusCode: 200,
+  startTimeMs,
+  endTimeMs,
+  requestContentLength: -1,
+  responseContentLength: -1,
+  error: '',
+});
+```
+
+### `logger`
+
+Lightweight typed logger built on `Rumtrace.log`. Mirrors OTel severity levels.
+
+```ts
+import { logger } from '@rumtrace/rumtrace-rn-ios';
+
+logger.trace('verbose detail');
+logger.debug('debug', { component: 'cart' });
+logger.info('User logged in', { method: 'sso' });
+logger.warn('Slow response', { latencyMs: 1800 });
+logger.error('Checkout failed', { orderId });
+logger.fatal('Unrecoverable state');
+```
 
 ### Instrumentation singletons
 
-- `NavigationInstrumentation` — Manual control of view spans from a
-  navigation ref.
-- `NetworkInstrumentation` — Patches `fetch` (and optionally
-  `XMLHttpRequest`) to start CLIENT spans with W3C trace context propagation.
-- `ErrorInstrumentation` — Captures uncaught errors, unhandled rejections,
-  and `console.error` / `console.warn`.
+For advanced use, the JS-side instrumentation is exposed as singletons.
+`RumtraceProvider` already wires these up — only touch them directly if you
+need to customize behavior at runtime.
 
-Each is a singleton with `getInstance(config?)` and `start()` / `stop()`.
+```ts
+import {
+  NavigationInstrumentation,
+  NetworkInstrumentation,
+  ErrorInstrumentation,
+} from '@rumtrace/rumtrace-rn-ios';
+
+// E.g. ignore specific routes after mount:
+NavigationInstrumentation.getInstance({
+  ignoreRoutes: ['Onboarding/Step1'],
+  routeNameTransformer: name => name.replace(/Screen$/, ''),
+});
+
+// Or add runtime URL filters:
+NetworkInstrumentation.getInstance({
+  ignoreUrlSubstrings: ['/healthz'],
+  ignoreUrlRegexes: ['^https://cdn\\.example\\.com/'],
+  traceXhr: false,
+});
+
+// Disable console.warn capture:
+ErrorInstrumentation.getInstance({ trackConsoleErrors: false });
+```
+
+Each singleton exposes `start()` / `stop()` for full control.
+
+---
 
 ## Configuration
 
-`RumtraceConfig` is the union of:
+`RumtraceConfig` is the union of three slices:
 
-- `AgentConfig` — collector URL, environment, client token, sample rate.
-- `InstrumentationConfig` — toggles for native instrumentation packs (crash
-  reporting, URL session, view controllers, taps, hangs, lifecycle, exits,
-  etc.) and URL ignore lists.
-- `JsInstrumentationConfig` — `enableNetworkInstrumentation`,
-  `propagateTraceContext`, `enableDebugLogging`.
+### `AgentConfig` — collector & sampling
 
-See `src/types.ts` for the full surface — every option maps 1:1 to a setter on
-`RumtraceAgentConfigBuilder` / `RumtraceInstrumentationConfigBuilder` in the
-native SDK.
+| Option         | Type     | Default  | Description                                            |
+|----------------|----------|----------|--------------------------------------------------------|
+| `exportUrl`    | `string` | —        | Full collector URL (e.g. `https://traces.rumtrace.com`). |
+| `environment`  | `string` | —        | Deployment environment (`production`, `staging`, …).   |
+| `clientToken`  | `string` | —        | Auth/client token forwarded to the collector.          |
+| `sampleRate`   | `number` | `1.0`    | Session sample rate in `[0, 1]`.                       |
+
+### `InstrumentationConfig` — native packs
+
+| Option                                  | Type       | Description                                            |
+|-----------------------------------------|------------|--------------------------------------------------------|
+| `enableCrashReporting`                  | `boolean`  | Native crash capture (KSCrash-based).                  |
+| `enableCrashReportingInDebug`           | `boolean`  | Allow crash reporting in `DEBUG` builds.               |
+| `enableURLSessionInstrumentation`       | `boolean`  | Native `URLSession` HTTP spans.                        |
+| `enableViewControllerInstrumentation`   | `boolean`  | UIViewController appear/disappear → views.             |
+| `enableAppMetricInstrumentation`        | `boolean`  | App startup, foreground, hang metrics.                 |
+| `enableSystemMetrics`                   | `boolean`  | CPU / memory / battery sampling.                       |
+| `enableLifecycleEvents`                 | `boolean`  | Foreground/background transitions.                     |
+| `enableHangInstrumentation`             | `boolean`  | Main-thread hang detection.                            |
+| `enableLowPowerModeInstrumentation`     | `boolean`  | Low-power mode toggles.                                |
+| `enableTapInstrumentation`              | `boolean`  | UIControl tap events.                                  |
+| `enableExitInstrumentation`             | `boolean`  | Process exit reasons.                                  |
+| `enablePushNotificationInstrumentation` | `boolean`  | Push notification receive/open events.                 |
+| `enableWebViewInstrumentation`          | `boolean`  | `WKWebView` page loads.                                |
+| `enableSessionUsageInstrumentation`     | `boolean`  | Active session-time metrics.                           |
+| `sessionInactivityThresholdSeconds`     | `number`   | Session timeout (default: SDK-defined).                |
+| `urlSessionIgnoreSubstrings`            | `string[]` | URLs containing any of these are not traced natively.  |
+| `urlSessionIgnoreRegexes`               | `string[]` | Regex patterns for URLs to skip natively.              |
+| `ignoreExporterURLsByDefault`           | `boolean`  | Auto-skip the configured `exportUrl` (default: `true`).|
+
+### `JsInstrumentationConfig` — JS layer
+
+| Option                          | Type      | Default | Description                                                           |
+|---------------------------------|-----------|---------|-----------------------------------------------------------------------|
+| `enableNetworkInstrumentation`  | `boolean` | `true`  | Enable JS-level fetch/XHR network spans.                              |
+| `propagateTraceContext`         | `boolean` | `true`  | Inject W3C `traceparent` / `tracestate` on outgoing requests.         |
+| `enableDebugLogging`            | `boolean` | `false` | Verbose logging from the JS instrumentation layer.                    |
+
+See [`src/types.ts`](./src/types.ts) for the full surface — every option maps
+1:1 to a setter on `RumtraceAgentConfigBuilder` /
+`RumtraceInstrumentationConfigBuilder` in the native SDK.
+
+---
+
+## Usage examples
+
+### Identify the user
+
+```ts
+await Rumtrace.setUser({
+  id: 'u_123',
+  email: 'a@b.com',
+  plan: 'pro',
+});
+```
+
+### Custom action
+
+```ts
+await Rumtrace.addAction('checkout_completed', {
+  actionType: 'business',
+  attributes: { orderId, total: 49.99, currency: 'USD' },
+});
+```
+
+### Capture a handled error
+
+```ts
+try {
+  await api.placeOrder(cart);
+} catch (err) {
+  await Rumtrace.addError(err, 'checkout');
+  throw err;
+}
+```
+
+### Custom timing
+
+```ts
+const start = Date.now();
+await heavyTask();
+await Rumtrace.addTiming('heavy_task', Date.now() - start);
+```
+
+### Manual view (without React Navigation)
+
+```ts
+await Rumtrace.startView('Cart', '/cart');
+// … render screen …
+await Rumtrace.endCurrentView();
+```
+
+### Force flush before exit
+
+```ts
+import { AppState } from 'react-native';
+
+AppState.addEventListener('change', state => {
+  if (state === 'background') {
+    void Rumtrace.forceFlush();
+  }
+});
+```
+
+> The provider already does this when a `ref` is supplied — call it manually
+> only when you need extra flush points.
+
+---
+
+## How it works
+
+```
+┌──────────────────────────┐
+│   Your React Native app  │
+└──────────────┬───────────┘
+               │
+               ▼
+┌──────────────────────────┐    JS-side instrumentation
+│     RumtraceProvider     │    (errors / network / navigation)
+└──────────────┬───────────┘
+               │ TurboModule
+               ▼
+┌──────────────────────────┐    Swift / Obj-C++ bridge
+│      RumtraceModule      │    (ios/RumtraceModule.swift)
+└──────────────┬───────────┘
+               │
+               ▼
+┌──────────────────────────┐    OpenTelemetry SDK + KSCrash
+│    RumtraceIosSdkAgent   │    (CocoaPod: RumtraceIosSdk)
+└──────────────┬───────────┘
+               │  OTLP / HTTP
+               ▼
+┌──────────────────────────┐
+│   Rumtrace collector     │
+└──────────────────────────┘
+```
+
+JS-level network instrumentation uses a **two-phase span** flow when
+`propagateTraceContext` is enabled: the native module starts a CLIENT span and
+returns a `traceparent`, JS injects that header before sending the request,
+and the span is closed when the response arrives. This produces correlated
+backend traces without relying on URLSession swizzling alone.
+
+---
+
+## Troubleshooting
+
+**Pod install fails with "could not find compatible versions for `RumtraceIosSdk`"**
+The native SDK version is pinned in `package.json` → `rumtrace.iosSdkVersion`.
+Run `pod repo update` and try again. If you maintain a private spec repo,
+make sure it's added to your `Podfile`.
+
+**`Rumtrace` module not found at runtime**
+Ensure `pod install` ran in `ios/` and the build was performed after install.
+For autolinking issues, run `npx react-native config` and verify the package
+appears under `ios.dependencies`.
+
+**Duplicate network spans**
+You likely have both `enableURLSessionInstrumentation` (native) and
+`enableNetworkInstrumentation` (JS) on for the same requests. RN's `fetch` is
+built on top of `URLSession`, so either disable one side or use ignore lists
+to scope each layer (for example, native ignores `*.amazonaws.com` while JS
+covers everything else).
+
+**Self-tracing the collector**
+The provider auto-adds `exportUrl` to the JS network ignore list when
+`ignoreExporterURLsByDefault` is `true` (default). Set
+`ignoreExporterURLsByDefault: false` only if you really want to see exporter
+traffic.
+
+**Debug logging**
+Pass `enableDebugLogging: true` in the config to see `[Rumtrace Network]` /
+`[Rumtrace Navigation]` messages on the JS console.
+
+---
+
+## Limitations
+
+- **iOS only.** No Android codepath in this package.
+- **`XMLHttpRequest` is opt-in.** RN's `fetch` is implemented on XHR — enabling
+  both produces duplicate spans. Keep `traceXhr: false` (default) unless you
+  bypass `fetch`.
+- **Trace context propagation** uses W3C `traceparent`. Servers behind CORS
+  must allow the `traceparent` header.
+- **No source map upload tooling** is bundled — set up symbolication via your
+  Rumtrace tenant.
+
+---
+
+## Development
+
+This package uses [`react-native-builder-bob`](https://github.com/callstack/react-native-builder-bob)
+to produce CommonJS, ESM, and TypeScript declaration outputs.
+
+```sh
+pnpm install
+pnpm build       # bob build → lib/{commonjs,module,typescript}
+pnpm typecheck   # tsc --noEmit
+pnpm lint        # eslint
+```
+
+The published artifacts are everything under `lib/`, `src/`, `ios/`, the
+podspec, and this README (see `package.json` → `files`).
+
+---
+
+## License
+
+Apache-2.0 — see the project root for the full license text.
