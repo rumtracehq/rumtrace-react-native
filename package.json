@@ -35,6 +35,7 @@
     "src",
     "ios",
     "RumtraceRnIos.podspec",
+    "app.plugin.js",
     "README.md",
     "CHANGELOG.md"
   ],
@@ -56,7 +57,13 @@
   },
   "peerDependencies": {
     "react": ">=18",
-    "react-native": ">=0.79"
+    "react-native": ">=0.79",
+    "@expo/config-plugins": ">=8.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@expo/config-plugins": {
+      "optional": true
+    }
   },
   "engines": {
     "node": ">=18"
