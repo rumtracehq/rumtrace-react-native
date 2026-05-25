@@ -3,14 +3,21 @@
   "version": "0.9.4",
   "summary": "Rumtrace React Native iOS SDK for Real User Monitoring",
   "description": "React Native wrapper around the Rumtrace iOS SDK for real user monitoring, crash reporting, and performance tracking.",
-  "homepage": "https://github.com/rumtrace/rumtrace-rn-ios",
+  "homepage": "https://github.com/rumtracehq/rumtrace-react-native",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rumtracehq/rumtrace-react-native.git"
+  },
   "license": "Apache-2.0",
   "author": "Rumtrace <team@rumtrace.com>",
   "scripts": {
     "prepack": "pnpm build",
     "build": "bob build",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint \"src/**/*.{ts,tsx}\""
+    "lint": "eslint \"src/**/*.{ts,tsx}\"",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "pnpm build && changeset publish"
   },
   "main": "./lib/module/index.js",
   "module": "./lib/module/index.js",
@@ -28,12 +35,14 @@
     "src",
     "ios",
     "RumtraceRnIos.podspec",
-    "README.md"
+    "README.md",
+    "CHANGELOG.md"
   ],
   "devDependencies": {
     "@babel/core": "^7.25.2",
     "@babel/preset-env": "^7.25.3",
     "@babel/runtime": "^7.25.0",
+    "@changesets/cli": "^2.31.0",
     "@react-native/babel-preset": "0.81.0",
     "@react-native/eslint-config": "0.81.0",
     "@react-native/typescript-config": "0.81.0",

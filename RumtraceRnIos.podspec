@@ -16,7 +16,7 @@ Pod::Spec.new do |s|
   s.ios.deployment_target  = '16.0'
   s.swift_version          = '5.10'
 
-  s.source = { :git => "https://github.com/rumtrace/rumtrace-rn-ios.git", :tag => s.version.to_s }
+  s.source = { :git => "https://github.com/rumtracehq/rumtrace-react-native.git", :tag => s.version.to_s }
   s.source_files = "ios/**/*.{h,m,mm,swift}"
 
   if fabric_enabled

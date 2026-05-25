@@ -472,6 +472,12 @@ pnpm lint        # eslint
 The published artifacts are everything under `lib/`, `src/`, `ios/`, the
 podspec, and this README (see `package.json` → `files`).
 
+### Releases
+
+Releases use [Changesets](https://github.com/changesets/changesets) and are
+fully automated by GitHub Actions. See [`RELEASING.md`](./RELEASING.md) for
+the authoring + publish flow.
+
 ---
 
 ## License
