@@ -1,5 +1,11 @@
 # @rumtrace/rumtrace-rn-ios
 
+## 0.9.6
+
+### Patch Changes
+
+- 089bec1: pod location fixed
+
 ## 0.9.5
 
 ### Patch Changes
