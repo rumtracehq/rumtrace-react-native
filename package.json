@@ -1,6 +1,6 @@
 {
   "name": "@rumtrace/rumtrace-rn-ios",
-  "version": "0.9.6",
+  "version": "0.10.0",
   "summary": "Rumtrace React Native iOS SDK for Real User Monitoring",
   "description": "React Native wrapper around the Rumtrace iOS SDK for real user monitoring, crash reporting, and performance tracking.",
   "homepage": "https://github.com/rumtracehq/rumtrace-react-native",
