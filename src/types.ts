@@ -86,13 +86,17 @@ export interface RumtraceConfig
 /**
  * Loose React Navigation `NavigationContainerRef`. We avoid a hard dependency
  * on `@react-navigation/native` to keep the wrapper framework-agnostic.
+ *
+ * Field types are deliberately permissive (they use `any` and broad object
+ * shapes) so a real `NavigationContainerRef<ParamList>` is structurally
+ * assignable. We runtime-check method existence before calling.
  */
 export interface NavigationRefLike {
-  getCurrentRoute?: () => { name: string; params?: Record<string, unknown> } | undefined;
-  addListener?: (
-    event: 'state' | string,
-    callback: (...args: unknown[]) => void,
-  ) => () => void;
+  getCurrentRoute?: () =>
+    | { name?: string; params?: Readonly<object> | undefined }
+    | undefined;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  addListener?: (event: any, callback: any) => () => void;
 }
 
 /** Backwards-compatible alias. */

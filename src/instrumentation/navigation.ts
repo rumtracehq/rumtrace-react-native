@@ -57,7 +57,10 @@ export class NavigationInstrumentation {
     if (!ref || typeof ref.getCurrentRoute !== 'function') return;
     const route = ref.getCurrentRoute();
     if (!route) return;
-    this.startView(route.name || 'unknown', route.params);
+    // Navigation libraries type params as `Readonly<object>`; at runtime they
+    // are always string-keyed records, so widening here is safe.
+    const params = route.params as Record<string, unknown> | undefined;
+    this.startView(route.name || 'unknown', params);
   }
 
   endCurrentView(): void {
