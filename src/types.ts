@@ -39,6 +39,18 @@ export interface InstrumentationConfig {
   enableCrashReportingInDebug?: boolean;
   enableURLSessionInstrumentation?: boolean;
   enableViewControllerInstrumentation?: boolean;
+  /**
+   * Exclude all SwiftUI `UIHostingController`s (and their children) from view
+   * tracking. Defaults to `true` — hosting controllers produce constant,
+   * anonymous sub-millisecond view churn. Set to `false` only if you name
+   * SwiftUI screens natively via `.reportName(_:)`.
+   */
+  blockHostingControllerViews?: boolean;
+  /**
+   * Extra view-controller class-name fragments (case-insensitive) to exclude
+   * from view tracking, merged with the built-in framework/container defaults.
+   */
+  viewControllerBlockListNames?: string[];
   enableAppMetricInstrumentation?: boolean;
   enableSystemMetrics?: boolean;
   enableLifecycleEvents?: boolean;

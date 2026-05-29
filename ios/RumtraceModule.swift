@@ -87,6 +87,12 @@ final class RumtraceModule: NSObject {
     if let v = instr["enableViewControllerInstrumentation"] as? Bool {
       _ = instrBuilder.withViewControllerInstrumentation(v)
     }
+    if let v = instr["blockHostingControllerViews"] as? Bool {
+      _ = instrBuilder.withBlockHostingControllerViews(v)
+    }
+    if let v = instr["viewControllerBlockListNames"] as? [String] {
+      _ = instrBuilder.withViewControllerBlockListNames(v)
+    }
     if let v = instr["enableAppMetricInstrumentation"] as? Bool {
       _ = instrBuilder.withAppMetricInstrumentation(v)
     }
@@ -366,7 +372,7 @@ final class RumtraceModule: NSObject {
     )
 
     let builder = tracer
-      .spanBuilder(spanName: "HTTP \(methodStr)")
+      .spanBuilder(spanName: Self.networkSpanName(method: methodStr, url: parsedUrl, host: host))
       .setSpanKind(spanKind: .client)
       .setAttribute(key: "http.method", value: .string(methodStr))
       .setAttribute(key: "http.url", value: .string(urlStr))
@@ -450,7 +456,7 @@ final class RumtraceModule: NSObject {
     )
 
     let builder = tracer
-      .spanBuilder(spanName: "HTTP \(method)")
+      .spanBuilder(spanName: Self.networkSpanName(method: method, url: parsedUrl, host: host))
       .setSpanKind(spanKind: .client)
       .setStartTime(time: Date(timeIntervalSince1970: startTimeMs / 1000.0))
       .setAttribute(key: "http.method", value: .string(method))
@@ -512,6 +518,20 @@ final class RumtraceModule: NSObject {
       }
     }
     return out
+  }
+
+  /// Builds a span name that follows OTel HTTP conventions while staying
+  /// readable and low-cardinality: `GET /v1/users`. Falls back to the host or
+  /// bare method when no path is available. The full URL still lives in the
+  /// `http.url` attribute for drill-down.
+  private static func networkSpanName(method: String, url: URL?, host: String) -> String {
+    if let path = url?.path, !path.isEmpty, path != "/" {
+      return "\(method) \(path)"
+    }
+    if !host.isEmpty {
+      return "\(method) \(host)"
+    }
+    return "HTTP \(method)"
   }
 
   /// Applies status / size / error attributes to a network span.

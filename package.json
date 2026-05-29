@@ -69,7 +69,7 @@
     "node": ">=18"
   },
   "rumtrace": {
-    "iosSdkVersion": "0.9.4"
+    "iosSdkVersion": "0.10.0"
   },
   "react-native-builder-bob": {
     "source": "src",

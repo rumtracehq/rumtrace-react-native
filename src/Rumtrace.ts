@@ -64,6 +64,8 @@ function buildInstrumentationConfig(
     'enableCrashReportingInDebug',
     'enableURLSessionInstrumentation',
     'enableViewControllerInstrumentation',
+    'blockHostingControllerViews',
+    'viewControllerBlockListNames',
     'enableAppMetricInstrumentation',
     'enableSystemMetrics',
     'enableLifecycleEvents',
